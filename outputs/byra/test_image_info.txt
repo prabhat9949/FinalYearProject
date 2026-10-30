@@ -1,0 +1,5 @@
+Patient ID: 11
+Image index: 0
+Actual class: Normal
+Class number: 0
+Image shape: (434, 636)

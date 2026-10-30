@@ -1,0 +1,510 @@
+import { useState } from 'react';
+import { User, ClipboardList, TestTube, RefreshCw, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
+import { Button } from '@/app/components/ui/button';
+import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
+import { PatientData, NORMAL_RANGES } from '@/app/types/patient';
+
+interface PatientInputFormProps {
+  onPredict: (data: PatientData, ultrasound?: File) => void;
+  isProcessing: boolean;
+}
+
+export function PatientInputForm({ onPredict, isProcessing }: PatientInputFormProps) {
+  const [formData, setFormData] = useState<PatientData>({
+    patientId: '',
+    name: '',
+    age: 0,
+    gender: '',
+    totalBilirubin: 0,
+    directBilirubin: 0,
+    alkalinePhosphatase: 0,
+    sgptAlt: 0,
+    sgotAst: 0,
+    totalProteins: 0,
+    albumin: 0,
+    agRatio: 0,
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // for image handling
+  const [ultrasoundFile, setUltrasoundFile] = useState<File | null>(null);
+  const [ultrasoundError, setUltrasoundError] = useState('');
+
+  const handleInputChange = (field: keyof PatientData, value: number | string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[field];
+        return updated;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    // Age validation
+    if (!formData.age || formData.age < 1 || formData.age > 120) {
+      newErrors.age = 'Age must be between 1 and 120';
+    }
+
+    // Gender validation
+    if (!formData.gender) {
+      newErrors.gender = 'Gender is required';
+    }
+
+    // Clinical parameters validation (required + positive values only)
+    const clinicalFields: Array<keyof PatientData> = [
+      'totalBilirubin',
+      'directBilirubin',
+      'alkalinePhosphatase',
+      'sgptAlt',
+      'sgotAst',
+      'totalProteins',
+      'albumin',
+      'agRatio',
+    ];
+
+    for (const field of clinicalFields) {
+      const v = formData[field] as number;
+      if (v === null || v === undefined || Number.isNaN(v) || v < 0) {
+        newErrors[field] = 'Must be a positive number';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+  onPredict(formData, ultrasoundFile || undefined);
+}
+  };
+
+  const resetForm = () => {
+    setFormData({
+      patientId: '',
+      name: '',
+      age: 0,
+      gender: '',
+      totalBilirubin: 0,
+      directBilirubin: 0,
+      alkalinePhosphatase: 0,
+      sgptAlt: 0,
+      sgotAst: 0,
+      totalProteins: 0,
+      albumin: 0,
+      agRatio: 0,
+    });
+setErrors({});
+setUltrasoundFile(null);
+setUltrasoundError('');
+  };
+
+  const getInputClassName = (field: string, value: number) => {
+    if (errors[field]) return 'border-red-500 focus:border-red-500';
+    if (!value || value === 0) return '';
+
+    const range = (NORMAL_RANGES as any)[field];
+    if (range && (value < range.min || value > range.max)) {
+      return 'border-amber-400 bg-amber-50';
+    }
+    return '';
+  };
+
+  // Remove number input spinners/arrows
+  const numberInputBase =
+    'appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+
+  // Human-readable labels
+  const PARAMETER_LABELS: Record<string, string> = {
+    totalBilirubin: 'Total Bilirubin (TB)',
+    directBilirubin: 'Direct Bilirubin (DB)',
+    alkalinePhosphatase: 'Alkaline Phosphatase',
+    sgptAlt: 'SGPT / ALT',
+    sgotAst: 'SGOT / AST',
+    totalProteins: 'Total Proteins (TP)',
+    albumin: 'Albumin (ALB)',
+    agRatio: 'A/G Ratio',
+  };
+
+  // Units
+  const PARAMETER_UNITS: Record<string, string> = {
+    totalBilirubin: 'mg/dL',
+    directBilirubin: 'mg/dL',
+    alkalinePhosphatase: 'IU/L',
+    sgptAlt: 'IU/L',
+    sgotAst: 'IU/L',
+    totalProteins: 'g/dL',
+    albumin: 'g/dL',
+    agRatio: '',
+  };
+
+  // Field placeholders with abnormal examples
+  const PARAMETER_PLACEHOLDERS: Record<string, string> = {
+    totalBilirubin: 'e.g., 3.5 (high)',
+    directBilirubin: 'e.g., 1.8 (high)',
+    alkalinePhosphatase: 'e.g., 250 (high)',
+    sgptAlt: 'e.g., 85 (high)',
+    sgotAst: 'e.g., 120 (high)',
+    totalProteins: 'e.g., 5.2 (low)',
+    albumin: 'e.g., 2.8 (low)',
+    agRatio: 'e.g., 0.6 (low)',
+  };
+
+  // Step values
+  const PARAMETER_STEPS: Record<string, number> = {
+    totalBilirubin: 0.1,
+    directBilirubin: 0.1,
+    alkalinePhosphatase: 1,
+    sgptAlt: 1,
+    sgotAst: 1,
+    totalProteins: 0.1,
+    albumin: 0.1,
+    agRatio: 0.01,
+  };
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <ClipboardList className="w-5 h-5 text-teal-600" />
+          Patient Information & Lab Results
+        </CardTitle>
+        <CardDescription>Enter patient details and clinical laboratory values</CardDescription>
+      </CardHeader>
+
+      <CardContent className="p-6 overflow-y-auto max-h-[calc(100vh-240px)]">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Patient Details */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <User className="w-4 h-4 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Patient Details</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Patient ID */}
+              <div className="space-y-2">
+                <Label htmlFor="patientId">Patient ID</Label>
+                <Input
+                  id="patientId"
+                  placeholder="e.g., LP-1234"
+                  value={formData.patientId}
+                  onChange={(e) => handleInputChange('patientId', e.target.value)}
+                />
+              </div>
+
+              {/* Patient Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Patient Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter patient name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+              </div>
+
+              {/* Age */}
+              <div className="space-y-2">
+                <Label htmlFor="age" className="flex items-center gap-1">
+                  Age <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="age"
+                  type="number"
+                  min={1}
+                  max={120}
+                  placeholder="Enter age"
+                  value={formData.age || ''}
+                  onChange={(e) => handleInputChange('age', parseInt(e.target.value) || 0)}
+                  className={`${numberInputBase} ${errors.age ? 'border-red-500' : ''}`}
+                />
+                {errors.age && <p className="text-xs text-red-500">{errors.age}</p>}
+              </div>
+
+              {/* Gender */}
+              <div className="space-y-2">
+                <Label htmlFor="gender" className="flex items-center gap-1">
+                  Gender <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.gender}
+                  onValueChange={(value) => handleInputChange('gender', value as 'Male' | 'Female')}
+                >
+                  <SelectTrigger className={errors.gender ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Clinical Parameters */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <TestTube className="w-4 h-4 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Clinical Laboratory Parameters</h3>
+              <span className="text-red-500 text-sm">* Required</span>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-800">
+                <strong>Testing Tip:</strong> Enter abnormal values (outside normal ranges) to see disease risk predictions. 
+                Values outside normal ranges will be highlighted in amber. Hover over field labels to see normal ranges.
+              </p>
+            </div>
+
+            <TooltipProvider>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(NORMAL_RANGES).map(([key, range]) => (
+                  <div key={key} className="space-y-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Label className="flex items-center gap-1 cursor-help">
+                          {PARAMETER_LABELS[key] ?? key}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                      </TooltipTrigger>
+
+                      <TooltipContent>
+                        <p>{(range as any).description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        step={PARAMETER_STEPS[key] ?? 0.01}
+                        placeholder={PARAMETER_PLACEHOLDERS[key] ?? ''}
+                        value={(formData as any)[key] || ''}
+                        onChange={(e) =>
+                          handleInputChange(key as keyof PatientData, parseFloat(e.target.value) || 0)
+                        }
+                        className={`${numberInputBase} ${getInputClassName(
+                          key,
+                          (formData as any)[key]
+                        )}`}
+                      />
+
+                      {!!PARAMETER_UNITS[key] && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                          {PARAMETER_UNITS[key]}
+                        </span>
+                      )}
+                    </div>
+
+                    {errors[key] && <p className="text-xs text-red-500">{errors[key]}</p>}
+                  </div>
+                ))}
+              </div>
+            </TooltipProvider>
+          </div>
+
+          {/* Ultrasound Image */}
+<div className="space-y-4">
+  <div className="flex items-center gap-2 pb-2 border-b">
+    <ImageIcon className="w-4 h-4 text-gray-600" />
+    <h3 className="font-semibold text-gray-900">
+      Ultrasound Image
+    </h3>
+    <span className="text-xs text-gray-500">(Optional)</span>
+  </div>
+
+  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <div className="flex items-start gap-3">
+      <Upload className="w-5 h-5 text-teal-600 mt-0.5" />
+
+      <div className="flex-1">
+        <Label
+          htmlFor="ultrasound"
+          className="cursor-pointer font-medium"
+        >
+          Upload liver ultrasound
+        </Label>
+
+        <p className="text-xs text-gray-500 mt-1">
+          Supported formats: JPG, JPEG, PNG, WEBP · Maximum size: 10 MB
+        </p>
+
+        <Input
+          id="ultrasound"
+          type="file"
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+          className="mt-3 cursor-pointer"
+          disabled={isProcessing}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+
+            setUltrasoundError('');
+
+            if (!file) {
+              setUltrasoundFile(null);
+              return;
+            }
+
+            const allowedTypes = [
+              'image/jpeg',
+              'image/jpg',
+              'image/png',
+              'image/webp',
+            ];
+
+            const maxSize = 10 * 1024 * 1024;
+
+            if (!allowedTypes.includes(file.type)) {
+              setUltrasoundError(
+                'Unsupported image format. Please upload JPG, JPEG, PNG, or WEBP.'
+              );
+              setUltrasoundFile(null);
+              e.target.value = '';
+              return;
+            }
+
+            if (file.size > maxSize) {
+              setUltrasoundError(
+                'Image is too large. Maximum allowed size is 10 MB.'
+              );
+              setUltrasoundFile(null);
+              e.target.value = '';
+              return;
+            }
+
+            setUltrasoundFile(file);
+          }}
+        />
+
+        {ultrasoundFile && (
+          <div className="mt-3 flex items-center justify-between rounded-md border bg-white px-3 py-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <ImageIcon className="w-4 h-4 text-teal-600 flex-shrink-0" />
+
+              <span className="text-sm text-gray-700 truncate">
+                {ultrasoundFile.name}
+              </span>
+
+              <span className="text-xs text-gray-400 flex-shrink-0">
+                {(ultrasoundFile.size / 1024 / 1024).toFixed(2)} MB
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isProcessing}
+              onClick={() => {
+                setUltrasoundFile(null);
+                setUltrasoundError('');
+
+                const input = document.getElementById(
+                  'ultrasound'
+                ) as HTMLInputElement | null;
+
+                if (input) {
+                  input.value = '';
+                }
+              }}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
+        {ultrasoundError && (
+          <p className="text-xs text-red-500 mt-2">
+            {ultrasoundError}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 pt-4 border-t">
+            <Button
+              type="submit"
+              className="bg-teal-600 hover:bg-teal-700 flex-1 min-w-[200px]"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <TestTube className="w-4 h-4 mr-2" />
+                  Predict Risk
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={resetForm}
+              disabled={isProcessing}
+              className="min-w-[120px]"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFormData({
+                  patientId: 'LP-' + Math.floor(Math.random() * 10000),
+                  name: 'High Risk Patient',
+                  age: 55,
+                  gender: 'Male',
+                  totalBilirubin: 4.2,    // High (normal: 0.3-1.2)
+                  directBilirubin: 2.1,   // High (normal: 0.1-0.3)
+                  alkalinePhosphatase: 285, // High (normal: 44-147)
+                  sgptAlt: 95,            // High (normal: 10-40)
+                  sgotAst: 128,           // High (normal: 10-40)
+                  totalProteins: 5.8,     // Low (normal: 6.3-8.2)
+                  albumin: 2.9,           // Low (normal: 3.5-5.0)
+                  agRatio: 0.65,          // Low (normal: 1.1-2.5)
+                });
+                setErrors({});
+              }}
+              disabled={isProcessing}
+              className="min-w-[160px] text-amber-700 border-amber-300 hover:bg-amber-50"
+            >
+              <TestTube className="w-4 h-4 mr-2" />
+              Load High Risk Example
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

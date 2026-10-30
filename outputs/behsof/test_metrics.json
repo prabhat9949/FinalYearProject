@@ -1,0 +1,56 @@
+{
+    "dataset": "BEHSOF",
+    "task": "NAFLD vs Non-NAFLD",
+    "evaluation_level": "image-level",
+    "seed": 42,
+    "test_samples": 247,
+    "class_distribution": {
+        "Non-NAFLD": 23,
+        "NAFLD": 224
+    },
+    "checkpoint_epoch": 15,
+    "best_validation_auc": 0.9728260869565218,
+    "test_metrics": {
+        "accuracy": 0.97165991902834,
+        "precision": 0.9779735682819384,
+        "sensitivity_recall": 0.9910714285714286,
+        "specificity": 0.782608695652174,
+        "f1_score": 0.9844789356984479,
+        "balanced_accuracy": 0.8868400621118013,
+        "roc_auc": 0.9589479813664596,
+        "pr_auc": 0.9925092664160686
+    },
+    "confusion_matrix": {
+        "TN": 18,
+        "FP": 5,
+        "FN": 2,
+        "TP": 222
+    },
+    "classification_report": {
+        "Non-NAFLD": {
+            "precision": 0.9,
+            "recall": 0.782608695652174,
+            "f1-score": 0.8372093023255814,
+            "support": 23.0
+        },
+        "NAFLD": {
+            "precision": 0.9779735682819384,
+            "recall": 0.9910714285714286,
+            "f1-score": 0.9844789356984479,
+            "support": 224.0
+        },
+        "accuracy": 0.97165991902834,
+        "macro avg": {
+            "precision": 0.9389867841409691,
+            "recall": 0.8868400621118013,
+            "f1-score": 0.9108441190120147,
+            "support": 247.0
+        },
+        "weighted avg": {
+            "precision": 0.9707128716403003,
+            "recall": 0.97165991902834,
+            "f1-score": 0.9707655690281001,
+            "support": 247.0
+        }
+    }
+}

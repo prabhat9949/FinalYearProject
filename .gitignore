@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.DS_Store
+
+myvenv/
+
+data/ultrasound/dataset_liver_bmodes_steatosis_assessment_IJCARS.mat
+saved_models/liver_vit.pt
+
+__pycache__/
+*.pyc
+saved_models/behsof_vit.pt
+
+data/ultrasound/BEHSOF
+
+data/ultrasound/NFLD_UltraSound_Image_&_Clinical_Dataset
